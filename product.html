@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Management</title>
+</head>
+<body>
+    <div id="loginSection">
+        <h1>Login</h1>
+        <form id="loginForm">
+            <label for="username">Username:</label><br>
+            <input type="text" id="username" name="username" value=""><br>
+            <label for="password">Password:</label><br>
+            <input type="password" id="password" name="password" value=""><br>
+            <button type="submit">Login</button>
+        </form>
+        <p id="loginMessage" style="color: red; display: none;"></p>
+    </div>
+
+    <div id="productSection" style="display: none;">
+        <h1>Product Management</h1>
+
+        <h2>Add Product</h2>
+        <form id="productForm">
+            <label for="name">Name:</label><br>
+            <input type="text" id="name" name="name"><br>
+            <label for="description">Description:</label><br>
+            <input type="text" id="description" name="description"><br>
+            <label for="price">Price:</label><br>
+            <input type="number" id="price" name="price"><br>
+            <button type="submit">Add Product</button>
+        </form>
+
+        <button id="viewListButton">View List</button>
+        <ul id="productList" style="display: none;"></ul>
+
+        <h2>Search Product by ID</h2>
+        <input type="number" id="searchId" placeholder="Enter product ID">
+        <button id="searchButton">Search</button>
+        <div id="searchResult"></div>
+    </div>
+
+    <script>
+        
+        document.getElementById('loginForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            if (username === 'admin' && password === 'admin123') {
+                document.getElementById('loginSection').style.display = 'none';
+                document.getElementById('productSection').style.display = 'block';
+            } else {
+                document.getElementById('loginMessage').textContent = 'Invalid credentials';
+                document.getElementById('loginMessage').style.display = 'block';
+            }
+        });
+
+    
+        async function fetchProducts() {
+            try {
+                const response = await fetch('/api/products');
+                const products = await response.json();
+                const productList = document.getElementById('productList');
+                productList.innerHTML = '';
+                products.forEach(product => {
+                    const listItem = document.createElement('li');
+                    listItem.textContent = `${product.name} - ${product.description} - Price: ${product.price}`;
+                    
+                   
+                    const viewButton = document.createElement('button');
+                    viewButton.textContent = 'View';
+                    viewButton.addEventListener('click', () => viewProduct(product.id));
+
+                    const updateButton = document.createElement('button');
+                    updateButton.textContent = 'Update';
+                    updateButton.addEventListener('click', () => updateProduct(product.id));
+
+                    
+                    const deleteButton = document.createElement('button');
+                    deleteButton.textContent = 'Delete';
+                    deleteButton.addEventListener('click', () => deleteProduct(product.id));
+
+                    listItem.appendChild(viewButton);
+                    listItem.appendChild(updateButton);
+                    listItem.appendChild(deleteButton);
+
+                    productList.appendChild(listItem);
+                });
+                productList.style.display = 'block'; 
+            } catch (error) {
+                console.error('Error fetching products:', error);
+            }
+        }
+
+       
+        document.getElementById('productForm').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            
+            const formData = new FormData(this);
+            const productData = {};
+            formData.forEach((value, key) => {
+                productData[key] = value;
+            });
+
+            try {
+                const response = await fetch('/api/products', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(productData)
+                });
+                const newProduct = await response.json();
+                console.log('Product added successfully:', newProduct);
+                fetchProducts(); 
+            } catch (error) {
+                console.error('Error adding product:', error);
+                alert('Failed to add product. Please try again.');
+            }
+        });
+
+       
+        document.getElementById('viewListButton').addEventListener('click', () => {
+            const productList = document.getElementById('productList');
+            productList.style.display = productList.style.display === 'none' ? 'block' : 'none';
+            if (productList.style.display === 'block') {
+                fetchProducts();
+            }
+        });
+
+      
+        async function viewProduct(productId) {
+            try {
+                const response = await fetch(`/api/products/${productId}`);
+                const product = await response.json();
+                alert(`Product Details:\nName: ${product.name}\nDescription: ${product.description}\nPrice: ${product.price}`);
+            } catch (error) {
+                console.error('Error fetching product details:', error);
+                alert('Failed to fetch product details. Please try again.');
+            }
+        }
+
+        
+        async function updateProduct(productId) {
+            const updatedName = prompt('Enter updated name:');
+            const updatedDescription = prompt('Enter updated description:');
+            const updatedPrice = prompt('Enter updated price:');
+
+            const updatedProduct = {
+                name: updatedName,
+                description: updatedDescription,
+                price: updatedPrice
+            };
+
+            try {
+                const response = await fetch(`/api/products/${productId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(updatedProduct)
+                });
+                const updatedProductResponse = await response.json();
+                console.log('Product updated successfully:', updatedProductResponse);
+                fetchProducts(); 
+            } catch (error) {
+                console.error('Error updating product:', error);
+                alert('Failed to update product. Please try again.');
+            }
+        }
+
+      
+        async function deleteProduct(productId) {
+            if (confirm('Are you sure you want to delete this product?')) {
+                try {
+                    const response = await fetch(`/api/products/${productId}`, {
+                        method: 'DELETE'
+                    });
+                    if (response.ok) {
+                        console.log('Product deleted successfully!');
+                        fetchProducts(); 
+                    } else {
+                        const errorMessage = await response.json();
+                        console.error('Error deleting product:', errorMessage.message);
+                        alert('Failed to delete product. Please try again.');
+                    }
+                } catch (error) {
+                    console.error('Error deleting product:', error);
+                    alert('Failed to delete product. Please try again.');
+                }
+            }
+        }
+
+       
+        document.getElementById('searchButton').addEventListener('click', async () => {
+            const searchId = document.getElementById('searchId').value;
+            try {
+                const response = await fetch(`/api/products/${searchId}`);
+                const product = await response.json();
+                const searchResult = document.getElementById('searchResult');
+                searchResult.innerHTML = `
+                    <h3>Search Result</h3>
+                    <p>Name: ${product.name}</p>
+                    <p>Description: ${product.description}</p>
+                    <p>Price: ${product.price}</p>
+                `;
+            } catch (error) {
+                console.error('Error searching product by ID:', error);
+                alert('Failed to search product. Please try again.');
+            }
+        });
+    </script>
+</body>
+</html>
